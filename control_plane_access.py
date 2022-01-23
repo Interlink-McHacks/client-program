@@ -59,5 +59,4 @@ class ControlPlaneAccessInstance:
             result['remove'].append(tuns[idx])
 
         self.tunnels = [tuns[i] for i in new_tun_ids.intersection(old_tun_ids).union(add_tun_ids)]
-        print(self.tunnels)
         return result

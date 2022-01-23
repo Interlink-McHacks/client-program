@@ -52,7 +52,8 @@ def entry():
 
     while True:
         new = ctrl_plane.contact_cmd()['tunnels']
-        console.log('Control Plane Response:', new)
+        console.log('Updating tunnel list', style='blue')
+        # console.log('Control Plane Response:', new)
         diff = ctrl_plane.diff_cmd_result_and_update(new)
         # print(diff)
         for tun in diff['add']:
