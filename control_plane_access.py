@@ -6,6 +6,9 @@ class ControlPlaneAccessInstance:
     host_secret = ''
     host_id = ''
     tenant_id = ''
+    tunnels = []
+    ws_processes = {}
+
     def __init__(self, base_url='http://100.81.35.39:3000'):
         self.BASE_URL = base_url
 
@@ -35,3 +38,26 @@ class ControlPlaneAccessInstance:
         return requests.post(f'{self.BASE_URL}/api/tenant/{self.tenant_id}/host/{self.host_id}/cmd', json={
             'secret': self.host_secret
         }).json()['data']
+
+    def diff_cmd_result_and_update(self, new_tunnel):
+        result = {
+            'add': [],
+            'remove': []
+        }
+
+        new_tun_ids = {i['_id'] for i in new_tunnel}
+        old_tun_ids = {i['_id'] for i in self.tunnels}
+
+        add_tun_ids = new_tun_ids.difference(old_tun_ids)
+        del_tun_ids = old_tun_ids.difference(new_tun_ids)
+
+        tuns = {i['_id']: i for i in self.tunnels + new_tunnel}
+
+        for idx in add_tun_ids:
+            result['add'].append(tuns[idx])
+        for idx in del_tun_ids:
+            result['remove'].append(tuns[idx])
+
+        self.tunnels = [tuns[i] for i in new_tun_ids.intersection(old_tun_ids).union(add_tun_ids)]
+        print(self.tunnels)
+        return result
