@@ -9,7 +9,7 @@ class ControlPlaneAccessInstance:
     tunnels = []
     ws_processes = {}
 
-    def __init__(self, base_url='http://100.81.35.39:3000'):
+    def __init__(self, base_url='http://api.interlink.rest'):
         self.BASE_URL = base_url
 
     def login(self, email, password):
@@ -35,9 +35,10 @@ class ControlPlaneAccessInstance:
         }).json()
 
     def contact_cmd(self):
-        return requests.post(f'{self.BASE_URL}/api/tenant/{self.tenant_id}/host/{self.host_id}/cmd', json={
+        r = requests.post(f'{self.BASE_URL}/api/tenant/{self.tenant_id}/host/{self.host_id}/cmd', json={
             'secret': self.host_secret
-        }).json()['data']
+        }).json()
+        return r['data']
 
     def diff_cmd_result_and_update(self, new_tunnel):
         result = {

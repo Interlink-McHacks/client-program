@@ -8,7 +8,6 @@ import dbm
 import time
 import signal
 
-
 db = dbm.open('interlink_persist', 'c')
 WG_IP = '10.45.106.10'
 RETRY_MAX = 20
@@ -18,7 +17,8 @@ ctrl_plane = ControlPlaneAccessInstance()
 
 def activate_tunnel(target_port, wg_port):
     output = subprocess.Popen(['websockify', f'{WG_IP}:{wg_port}', f'127.0.0.1:{target_port}'])
-    console.print(f'Starting Interlink listening on localhost:{target_port} through Wireguard on port {wg_port}', style='bold green')
+    console.print(f'Starting Interlink listening on localhost:{target_port} through Wireguard on port {wg_port}',
+                  style='bold green')
     return output
 
 
@@ -55,10 +55,14 @@ def entry():
         console.log('Updating tunnel list', style='blue')
         # console.log('Control Plane Response:', new)
         diff = ctrl_plane.diff_cmd_result_and_update(new)
-        # print(diff)
         for tun in diff['add']:
             console.print(f'Creating new tunnel on local port {tun["hostConnectPort"]}', style='bold green')
-            result = activate_tunnel(tun['hostConnectPort'], tun['wgListeningPort'])
+            if tun['type'] == 'TCP':
+                result = activate_tunnel(tun['hostConnectPort'], tun['wgListeningPort'])
+            else:
+                console.print('Using socat for HTTP mode', style='italic blue')
+                result = subprocess.Popen(['socat', f'TCP-LISTEN:{tun["wgListeningPort"]},reuseaddr,fork,bind={WG_IP}',
+                                           f'TCP:127.0.0.1:{tun["hostConnectPort"]}'])
             ctrl_plane.ws_processes[tun['_id']] = result
         for tun in diff['remove']:
             console.print(f'Removing old tunnel on local port {tun["hostConnectPort"]}', style='bold red')
@@ -68,9 +72,14 @@ def entry():
         time.sleep(3)
 
 
+CLEANUP = False
+
+
 def signal_handler(sig, frame):
+    global CLEANUP
+    CLEANUP = True
     console.print('\nShutting down Interlink Daemon', style='bold red')
-    console.log('Closing Websockify tunnels')
+    console.log('Closing Websockify and Socat tunnels')
     console.print('Clean up successful', style='underline green')
     for _, process in ctrl_plane.ws_processes.items():
         console.log('Shutting down process', process.pid)
@@ -81,5 +90,10 @@ def signal_handler(sig, frame):
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal_handler)
-    entry()
+    try:
+        entry()
+    except Exception as e:
+        # print('Hello', e)
+        if not CLEANUP:
+            signal_handler(None, None)
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
